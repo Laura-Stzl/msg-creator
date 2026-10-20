@@ -1,0 +1,23 @@
+{
+  "packages": [
+    "msgforge==1.0.0",
+    "extract-msg==0.56.1",
+    "compressed-rtf==1.0.7",
+    "RTFDE==0.1.2.2",
+    "Markdown==3.9",
+    "PyYAML==6.0.3",
+    "beautifulsoup4==4.15.0",
+    "openpyxl==3.1.5"
+  ],
+  "files": [
+    "py/mail_tools/__init__.py",
+    "py/mail_tools/batches.py",
+    "py/mail_tools/config.py",
+    "py/mail_tools/drafts.py",
+    "py/mail_tools/msg_body.py",
+    "py/web.py"
+  ],
+  "wheels": [
+    "wheels/red_black_tree_mod-1.22-py3-none-any.whl"
+  ]
+}

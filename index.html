@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MSG Creator</title>
+<link rel="icon" href="data:,">
+<script>try { const t = localStorage.getItem("msg-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5d6576; --line: #dde1e8;
+    --accent: #0b63ce; --accent-text: #ffffff; --ok: #1d7a3e; --err: #b42318; --field: #ffffff;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14161b; --card: #1d2027; --text: #e7e9ee; --muted: #a0a7b5; --line: #323743;
+            --accent: #5a9cf0; --accent-text: #0d1117; --ok: #4cc27a; --err: #f07167; --field: #15171c; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #14161b; --card: #1d2027; --text: #e7e9ee; --muted: #a0a7b5; --line: #323743;
+          --accent: #5a9cf0; --accent-text: #0d1117; --ok: #4cc27a; --err: #f07167; --field: #15171c; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+  h1 { font-size: 26px; margin: 0; }
+  #theme { background: transparent; color: var(--text); border: 1px solid var(--line); white-space: nowrap; }
+  .steps { margin: 4px 0 8px; padding-left: 22px; } .steps li { margin-bottom: 8px; }
+  .steps a { color: var(--accent); font-weight: 600; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-top: 20px; }
+  .tabs { display: flex; gap: 8px; margin-top: 24px; }
+  .tabs button { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .tabs button[aria-selected="true"] { background: var(--card); color: var(--text); border-color: var(--accent); }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; }
+  input[type=text], textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--field); color: var(--text); font: inherit; }
+  textarea { min-height: 220px; resize: vertical; }
+  button { font: inherit; padding: 9px 16px; border-radius: 8px; border: 0; cursor: pointer; }
+  .primary { background: var(--accent); color: var(--accent-text); font-weight: 600; margin-top: 16px; }
+  .choices { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .choice { border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .choice h3 { font-size: 15px; margin: 0 0 6px; }
+  .choice ol { margin: 0 0 10px; padding-left: 20px; }
+  .pick { display: inline-block; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent);
+    font-weight: 600; cursor: pointer; margin: 4px 8px 0 0; }
+  .pick input { display: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+  .row .primary { margin-top: 0; }
+  .secondary { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: default; }
+  .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 24px; text-align: center; margin-top: 12px; }
+  .drop.over { border-color: var(--accent); }
+  .files { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
+  #status { margin-top: 20px; min-height: 1.5em; }
+  .ok { color: var(--ok); } .err { color: var(--err); white-space: pre-wrap; }
+  .result a { display: inline-block; margin: 8px 12px 0 0; font-weight: 600; color: var(--accent); }
+  .sig-actions { margin-top: 8px; } .sig-actions a { font-weight: 600; color: var(--accent); margin-right: 12px; }
+  .result { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .result .dl { display: inline-block; padding: 9px 16px; margin: 4px 8px 4px 0; border-radius: 8px; border: 1px solid var(--accent);
+    color: var(--accent); font-weight: 600; text-decoration: none; }
+  .result button.dl { background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
+  .result .dl.primary { background: var(--accent); color: var(--accent-text); }
+  iframe.small { height: 220px; }
+  .images { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
+  .images li { border: 1px solid var(--line); border-radius: 8px; padding: 6px; text-align: center; font-size: 13px; }
+  .images img { display: block; max-width: 120px; max-height: 80px; margin: 0 auto 4px; }
+  .images button { padding: 2px 8px; font-size: 13px; }
+  textarea.over { border-color: var(--accent); outline: 2px dashed var(--accent); }
+  iframe { width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 8px; background: #fff; margin-top: 12px; }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>MSG Creator</h1><button id="theme" title="Hell/Dunkel umschalten">☾ Dunkel</button></header>
+  <p class="muted">Erstellt Outlook-Entwürfe (.msg) mit der gewünschten Signatur, dazu eine HTML-Vorschau.
+    Alles läuft in diesem Browser-Tab; keine Datei wird hochgeladen.</p>
+  <p class="muted"><b>Windows:</b> MSG in Outlook öffnen. <b>Mac:</b> zum Verschicken das Webmail im Browser nutzen
+    (MSG als Anhang), nicht Outlook für Mac.</p>
+
+  <section class="card">
+    <h2>1. Signatur</h2>
+    <p id="sig-state" class="muted">Noch keine Signatur geladen.</p>
+    <div id="sig-load" class="choices">
+      <div class="choice">
+        <h3>Weg A: Signatur-Datei laden</h3>
+        <p class="muted">Du hast eine <b>Signatur.json</b> bekommen (z. B. per Slack)? Einfach auswählen, fertig.</p>
+        <label class="pick">Signatur.json auswählen …<input type="file" id="sig-json" accept=".json"></label>
+      </div>
+      <div class="choice">
+        <h3>Weg B: Aus einer gesendeten Mail übernehmen</h3>
+        <ol class="muted">
+          <li>In Outlook unter „Gesendete Elemente“ eine Mail mit der Signatur auf den Schreibtisch ziehen
+            (es entsteht eine <b>.eml</b>- oder <b>.msg</b>-Datei).</li>
+          <li>Diese Datei hier auswählen.</li>
+          <li>Die erste Zeile der Signatur eintragen, genau wie sie in der Mail steht (meist der volle Name).</li>
+        </ol>
+        <label class="pick">Mail-Datei auswählen …<input type="file" id="sig-mail" accept=".eml,.msg"></label>
+        <span id="sig-mail-name" class="muted"></span>
+        <div id="sig-msg" hidden>
+          <label for="sig-marker">Erste Zeile der Signatur</label>
+          <input type="text" id="sig-marker" placeholder="z. B. Prof. Dr. Erika Musterfrau">
+          <div class="row"><button class="primary" id="sig-run" disabled>Signatur übernehmen</button></div>
+        </div>
+      </div>
+    </div>
+    <div id="sig-done" hidden>
+      <iframe id="sig-preview" title="Signatur" class="small"></iframe>
+      <div class="sig-actions"><a id="sig-save" download="Signatur.json">Als Signatur.json speichern</a>
+        <button class="secondary" id="sig-clear">Andere Signatur laden</button></div>
+      <p class="muted">Die Signatur bleibt nur in diesem Browser gespeichert.</p>
+    </div>
+  </section>
+
+  <h2 style="margin-top:28px">2. Mails erstellen</h2>
+
+  <div class="tabs" role="tablist" style="margin-top:12px">
+    <button role="tab" aria-selected="true" data-tab="single">Eine Mail</button>
+    <button role="tab" aria-selected="false" data-tab="batch">Viele Mails (Stapel)</button>
+  </div>
+
+  <section class="card" id="single">
+    <label for="subject">Betreff</label>
+    <input type="text" id="subject" placeholder="Einladung: …">
+    <label for="to">An</label>
+    <input type="text" id="to" placeholder="anna@beispiel.de; Max Muster &lt;max@beispiel.de&gt;">
+    <label for="cc">Cc</label>
+    <input type="text" id="cc" placeholder="optional, mit Semikolon getrennt">
+    <label for="bcc">Bcc</label>
+    <input type="text" id="bcc" placeholder="optional">
+    <label for="body">Text</label>
+    <textarea id="body" placeholder="Liebe Anna,&#10;&#10;…&#10;&#10;Herzliche Grüße&#10;Isabell"></textarea>
+    <p class="muted">Eingaben bleiben beim Neuladen erhalten. Markdown möglich: <code>**fett**</code>, Listen, <code>[Link](https://…)</code>. Die Signatur wird automatisch ergänzt.</p>
+    <p class="muted"><b>Bilder im Text:</b> Bild kopieren und mit Strg+V bzw. Cmd+V an der gewünschten Stelle in den Text einfügen,
+      ein Bild in das Textfeld ziehen oder <label class="pick" style="margin:0;padding:2px 10px">Bild auswählen …<input type="file" id="image-files" accept="image/*" multiple></label>.
+      Im Text erscheint dann <code>![Bild](cid:…)</code>; diese Zeile nicht verändern. Das Bild wird direkt in die Mail eingebettet.</p>
+    <ul class="images" id="image-list"></ul>
+    <label for="single-files">Anhänge</label>
+    <input type="file" id="single-files" multiple>
+    <div class="row"><button class="primary" id="single-run" disabled>MSG erstellen</button>
+      <button class="secondary" id="single-reset">Eingaben leeren</button></div>
+    <div class="result" id="single-result" hidden></div>
+  </section>
+
+  <section class="card" id="batch" hidden>
+    <h2>Viele individuelle Mails auf einmal</h2>
+    <ol class="steps">
+      <li><b>Liste ausfüllen:</b> Beispiel-Liste als <a href="beispiel/Beispiel-Liste.xlsx" download>Excel</a> oder
+        <a href="beispiel/Beispiel-Liste.csv" download>CSV</a> herunterladen und als Vorlage nutzen. Eine Zeile pro Mail; Spalten <b>An</b>, <b>Cc</b>, <b>Bcc</b>, <b>Betreff</b>, <b>Text</b>,
+        <b>Anhänge</b>. Mehrere Adressen in einer Zelle mit <code>;</code> trennen.</li>
+      <li><b>Anhänge eintragen:</b> in der Spalte „Anhänge“ nur den Dateinamen, z. B. <code>Programm.pdf</code>,
+        mehrere mit <code>;</code>. Ohne Anhang bleibt die Zelle leer.</li>
+      <li><b>Liste und alle Anhänge zusammen</b> hier hineinziehen – oder im Auswahlfenster mit gedrückter
+        Cmd- bzw. Strg-Taste mehrere Dateien markieren.</li>
+    </ol>
+    <div class="drop" id="drop">Dateien hierher ziehen oder <input type="file" id="batch-files" multiple></div>
+    <ul class="files" id="batch-list"></ul>
+    <label for="batch-name">Name des Stapels (optional)</label>
+    <input type="text" id="batch-name" placeholder="z. B. Einladungen 2027">
+    <div class="row"><button class="primary" id="batch-run" disabled>Alle MSGs erstellen</button>
+      <button class="secondary" id="batch-reset">Auswahl leeren</button></div>
+    <div class="result" id="batch-result" hidden></div>
+  </section>
+
+  <div id="status" class="muted">Starte …</div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
