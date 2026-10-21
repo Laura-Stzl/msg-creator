@@ -38,6 +38,10 @@ function writeInputs(files) {
 onmessage = async ({ data }) => {
   await ready;
   try {
+    if (data.type === "signature-clear") {
+      web.clear_signature();
+      return;
+    }
     if (data.type === "signature-json") {
       postMessage({ type: "signature", signature: JSON.parse(web.set_signature(data.text)) });
       return;

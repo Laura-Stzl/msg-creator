@@ -217,13 +217,18 @@ def prepare_draft(cfg, source, attachments=(), include_deck=False):
     """Validate and snapshot inputs before writing any MSG."""
     source = Path(source).expanduser().resolve()
     raw = source.read_bytes()
-    marker = signature_marker(cfg)
-    metadata, body = parse_markdown(raw.decode("utf-8-sig"), marker=marker)
-    signature_dir = path_for(cfg, "signature_dir")
-    signature_html = (signature_dir / "signature.html").read_text(encoding="utf-8")
-    signature_text = (signature_dir / "signature.txt").read_text(encoding="utf-8").strip()
-    if marker not in signature_text or marker not in signature_html:
-        raise ValueError("Die konfigurierte Signatur ist unvollständig oder passt nicht zu signature_marker.")
+    if cfg.get("without_signature"):
+        # Web version without a loaded signature: the mail ends with the typed text.
+        marker, signature_html, signature_text = None, "", ""
+        metadata, body = parse_markdown(raw.decode("utf-8-sig"))
+    else:
+        marker = signature_marker(cfg)
+        metadata, body = parse_markdown(raw.decode("utf-8-sig"), marker=marker)
+        signature_dir = path_for(cfg, "signature_dir")
+        signature_html = (signature_dir / "signature.html").read_text(encoding="utf-8")
+        signature_text = (signature_dir / "signature.txt").read_text(encoding="utf-8").strip()
+        if marker not in signature_text or marker not in signature_html:
+            raise ValueError("Die konfigurierte Signatur ist unvollständig oder passt nicht zu signature_marker.")
     configured = metadata.get("attachments") or []
     if not isinstance(configured, list) or not all(isinstance(x, str) for x in configured):
         raise ValueError("attachments muss eine Liste von Dateipfaden sein.")
@@ -290,8 +295,8 @@ def build_draft(prepared):
     rendered = markdown.markdown(body, extensions=["extra", "sane_lists", "nl2br"])
     # Preserve readable plain text without exposing Markdown syntax.
     plain = plain_text(rendered)
-    full_text = plain + "\n\n" + signature_text
-    content = BeautifulSoup(rendered + '<br>' + signature_html, "html.parser")
+    full_text = plain + "\n\n" + signature_text if signature_text else plain
+    content = BeautifulSoup(rendered + '<br>' + signature_html if signature_html else rendered, "html.parser")
     for paragraph in content.find_all("p"):
         default = "margin:0;font-size:11pt;" if "MsoNormal" in paragraph.get("class", []) else "margin:0 0 12pt;"
         paragraph["style"] = default + paragraph.get("style", "")

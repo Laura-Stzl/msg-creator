@@ -56,10 +56,16 @@ def signature_from_msg(path, marker):
 
 
 def config():
-    if not (SIGNATURE / "marker.txt").exists():
-        raise ValueError("Bitte zuerst eine Signatur laden.")
-    return {"root": WORK, "signature_dir": str(SIGNATURE), "output_dir": str(WORK / "output"),
-            "signature_marker": (SIGNATURE / "marker.txt").read_text(encoding="utf-8")}
+    cfg = {"root": WORK, "signature_dir": str(SIGNATURE), "output_dir": str(WORK / "output")}
+    if (SIGNATURE / "marker.txt").exists():
+        cfg["signature_marker"] = (SIGNATURE / "marker.txt").read_text(encoding="utf-8")
+    else:
+        cfg["without_signature"] = True  # Signature is optional in the web version.
+    return cfg
+
+
+def clear_signature():
+    shutil.rmtree(SIGNATURE, ignore_errors=True)
 
 
 def reset():

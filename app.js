@@ -17,8 +17,8 @@ const store = {
 
 function setStatus(text, kind = "muted") { status.textContent = text; status.className = kind; }
 function updateButtons() {
-  $("single-run").disabled = !ready || busy || !signature;
-  $("batch-run").disabled = !ready || busy || !signature || batchFiles.length === 0;
+  $("single-run").disabled = !ready || busy;
+  $("batch-run").disabled = !ready || busy || batchFiles.length === 0;
   $("sig-run").disabled = !ready || busy || !signatureFile || !$("sig-marker").value.trim();
 }
 function download(label, name, blob, primary = false) {
@@ -172,7 +172,7 @@ showImages();
 function showSignature(value) {
   signature = value;
   $("sig-load").hidden = !!value; $("sig-done").hidden = !value;
-  $("sig-state").textContent = value ? "Signatur geladen: " + value.marker : "Noch keine Signatur geladen.";
+  $("sig-state").textContent = value ? "Signatur geladen: " + value.marker : "Keine Signatur geladen (optional). Ohne Signatur endet die Mail mit deinem Text.";
   if (value) {
     const json = JSON.stringify(value, null, 2);
     store.set(json);
@@ -203,6 +203,7 @@ $("sig-run").addEventListener("click", async () => {
 $("sig-clear").addEventListener("click", () => {
   store.set(null); $("sig-json").value = ""; $("sig-mail").value = ""; $("sig-mail-name").textContent = "";
   signatureFile = null; $("sig-msg").hidden = true; showSignature(null);
+  worker.postMessage({ type: "signature-clear" });
 });
 const saved = store.get();
 if (saved) worker.postMessage({ type: "signature-json", text: saved });
@@ -304,7 +305,7 @@ worker.onerror = (event) => setStatus("Start fehlgeschlagen: " + (event.message 
 
 worker.onmessage = ({ data }) => {
   if (data.type === "status") setStatus(data.text);
-  else if (data.type === "ready") { ready = true; if (!busy) setStatus(signature || saved ? "Bereit." : "Bereit. Bitte zuerst die Signatur laden."); }
+  else if (data.type === "ready") { ready = true; if (!busy) setStatus(signature || saved ? "Bereit." : "Bereit. Die Signatur ist optional."); }
   else if (data.type === "signature") { busy = false; showSignature(data.signature); setStatus("Signatur geladen. Bereit.", "ok"); }
   else if (data.type === "fatal") setStatus("Start fehlgeschlagen: " + data.text, "err");
   else if (data.type === "progress") setStatus(`${data.phase}: ${data.created} von ${data.total} MSGs fertig`);
@@ -321,10 +322,20 @@ worker.onmessage = ({ data }) => {
       if (previewImages.has(cid)) { img.dataset.cid = cid; img.src = previewImages.get(cid).url; }
     });
     const preview = Object.assign(document.createElement("iframe"), { srcdoc: "<!doctype html>" + page.documentElement.outerHTML, title: "Vorschau" });
+    // Standalone HTML preview: pictures embedded, so the file also opens later or on another computer.
+    const htmlPage = new DOMParser().parseFromString(data.preview, "text/html");
+    const htmlLink = download("HTML-Vorschau herunterladen", data.name.replace(/\.msg$/, ".html"), new Blob([data.preview], { type: "text/html" }));
+    Promise.all([...htmlPage.querySelectorAll('img[src^="cid:"]')].map(async (img) => {
+      const image = previewImages.get(img.getAttribute("src").slice(4));
+      if (image) img.src = await dataUrl(image.blob);
+    })).then(() => {
+      URL.revokeObjectURL(htmlLink.href);
+      htmlLink.href = URL.createObjectURL(new Blob(["<!doctype html>" + htmlPage.documentElement.outerHTML], { type: "text/html" }));
+    });
     finish($("single-result"),
       note("<b>✓ Fertig: Die MSG liegt in deinem Ordner „Downloads“.</b><br>Windows: in Outlook öffnen. Mac: im Webmail verschicken (MSG als Anhang), nicht über Outlook für Mac."),
       [download("MSG nochmal herunterladen", data.name, new Blob([data.msg], { type: "application/vnd.ms-outlook" }), true),
-       copyButton(preview)],
+       htmlLink, copyButton(preview)],
       [note("Vorschau:", "muted"), preview]);
     setStatus("");
   } else if (data.type === "batch") {
